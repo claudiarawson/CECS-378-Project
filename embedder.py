@@ -36,6 +36,14 @@ rgb_image = image.convert("RGB").load()
 payload_index = 0
 width, height = image.size
 
+# Number of bits needed to embed/Number of bits in the image
+total_bits = len(payload)
+total_pixels = width * height * 3 # RGB channels
+
+# Ensure payload fits inside image
+if total_bits > total_pixels:
+    raise ValueError("Image is too small for payload")
+
 # for loop: loop over the pixels
 for y in range(height):
     for x in range(width):

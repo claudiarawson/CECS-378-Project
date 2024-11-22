@@ -60,3 +60,6 @@ for y in range(height):
 
 # save to tainted image
 image.save(out_path)
+
+# print successful embed
+print(f"Successfully embedded into {out_path}")

@@ -4,7 +4,7 @@ import os
 import sys
 import subprocess
 
-# Define the content of the batch file
+# The content of the batch file that will be executed with administrator privileges
 batch_content = '''@echo off
 :: Check if the script is running as administrator
 NET SESSION >nul 2>&1
@@ -57,7 +57,7 @@ try:
     subprocess.run(['powershell', '-Command', f'Start-Process cmd -ArgumentList "/c {os.path.abspath(batch_file)}" -Verb runAs'], check=True)
 except subprocess.CalledProcessError as e:
     print(f"Error while trying to run the batch file with administrator privileges: {e}")
-    
+
 # Create the GUI application
 def create_fullscreen_app():
     root = tk.Tk()

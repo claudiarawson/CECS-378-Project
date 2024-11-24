@@ -1,73 +1,44 @@
-from PIL import Image
+from PIL import Image, PngImagePlugin 
+import base64 
+def encode_file_to_base64(file_path): 
+    with open(file_path, 'rb') as file: 
+        encoded_string = base64.b64encode(file.read()).decode('utf-8') 
+        return encoded_string 
+    
+# Encode the Python file 
+python_file = './payload.py' 
+encoded_string = encode_file_to_base64(python_file) 
 
-payload_path = "./payload.py"
-img_path = "./uuh.png"
-out_path = "./tainted.png"
-
-# Convert character to list of bits
-def ctob(c):
-    output = [0]*8 # Default 0 to replace with 1 when needed
+# Save the encoded string to a file (optional, for reference) 
+with open('encoded_python_file.txt', 'w') as file: 
+    file.write(encoded_string) 
+    print("Python file encoded successfully!") 
+    
+# Convert character to list of bits 
+def ctob(c): 
+    output = [0]*8 # Default 0 to replace with 1 when needed 
     c_val = ord(c)
-
     bit_count = 7 # Big Endian
     for i in range(len(output)):
         bit_value = pow(2, bit_count)
         if bit_value <= c_val:
             c_val -= bit_value
             output[i] = 1
-        bit_count -= 1    
-
-    return output
-
-# Pull in payload text as bits
-payload = []
-with open(payload_path, "r") as file:
-    content = file.read()
-    for c in content:
-       payload.extend(ctob(c)) 
-
-
-
-# Pull in image as RGB file
-image = Image.open(img_path)
-rgb_image = image.convert("RGB").load()
-
-# Embed payload into image 
-payload_index = 0
-width, height = image.size
-
-# Number of bits needed to embed/Number of bits in the image
-total_bits = len(payload)
-total_pixels = width * height * 3 # RGB channels
-
-# Ensure payload fits inside image
-if total_bits > total_pixels:
-    raise ValueError("Image is too small for payload")
-
-# for loop: loop over the pixels
-for y in range(height):
-    for x in range(width):
-        # Embedding bits into different channels red, green, blue by modifying LSB
-        r, g, b = rgb_image[x, y] # current value of RGB pixel
-        if payload_index < len(payload):
-            r = (r & 0xFE) | payload[payload_index] # modifying LSB of red channel
-            payload_index += 1
-        if payload_index < len(payload):
-            g = (g & 0xFE) | payload[payload_index] # moddifying LSB of green channel
-            payload_index += 1
-        if payload_index < len(payload):
-            b = (b & 0XFE) | payload[payload_index] # modifying LSB of blue channel
-            payload_index +=1
+            bit_count -= 1 
+            return output
         
-        rgb_image[x, y] = (r, g, b) # update pixel with the modified red, green, blue channels
+def embed_data_in_image(input_image_path, output_image_path, data): 
+    # Open the image 
+    image = Image.open(input_image_path)
+    # Create a PngInfo object to store metadata 
+    metadata = PngImagePlugin.PngInfo() 
+    metadata.add_text("python_file", data) 
+    # Save the image with the embedded data 
+    image.save(output_image_path, "PNG", pnginfo=metadata) 
 
-        if payload_index >= len(payload):
-            break # if there is no more bits left to embed
-    if payload_index >= len(payload):
-        break # if all bit have been embedded
-
-# save to tainted image
-image.save(out_path)
-
-# print successful embed
-print(f"Successfully embedded into {out_path}")
+# Embed the encoded Python file into the image 
+input_image = 'uuh.png' 
+# Image to use 
+output_image = 'tainted.png' # Image with embedded data 
+embed_data_in_image(input_image, output_image, encoded_string) 
+print("Python file embedded successfully!")

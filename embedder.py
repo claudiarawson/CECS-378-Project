@@ -1,48 +1,69 @@
 from PIL import Image
 
-def embed_script_in_image(script_path, image_path, output_path):
-    # Read the script content
-    with open(script_path, "rb") as file:  # Open as binary to preserve byte structure
-        content = file.read()
+def read_file_as_binary(file_path):
+    with open(file_path, 'rb') as file:
+        return file.read()
 
-    len_cont = len(content) * 8  # Total length in bits
-    length_bits = [int(bit) for bit in f"{len_cont:032b}"]  # 32-bit length
+def ctob(c):
+    output = [0] * 8  # Default 0 to replace with 1 when needed
+    c_val = ord(c)
+    bit_count = 7  # Big Endian
+    for i in range(len(output)):
+        bit_value = 2 ** bit_count
+        if bit_value <= c_val:
+            c_val -= bit_value
+            output[i] = 1
+        bit_count -= 1
+    return output
 
-    # Convert script to binary (byte-by-byte)
-    script_bits = []
-    for byte in content:
-        script_bits.extend([int(bit) for bit in f"{byte:08b}"])
+def byte_to_bits(byte_data):
+    bits = []
+    for byte in byte_data:
+        bits.extend([int(bit) for bit in format(byte, '08b')])
+    return bits
 
-    # Combine length and script bits
-    payload_bits = length_bits + script_bits
+def write_image_with_embedded_data(image_path, output_path, file_data):
+    img = Image.open(image_path)
+    img_data = list(img.getdata())
+    print(f"Read image data size: {len(img_data)} pixels")
 
-    # Open the image
-    image = Image.open(image_path)
-    pixels = image.load()
-    width, height = image.size
+    file_bits = byte_to_bits(file_data)
+    print(f"Total bits to embed: {len(file_bits)}")
 
-    # Embed the bits into the image
-    bit_index = 0
-    for y in range(height):
-        for x in range(width):
-            if bit_index < len(payload_bits):
-                r, g, b = pixels[x, y]
-                r = (r & ~1) | payload_bits[bit_index]  # Embed in Red LSB
-                if bit_index + 1 < len(payload_bits):
-                    g = (g & ~1) | payload_bits[bit_index + 1]  # Embed in Green LSB
-                if bit_index + 2 < len(payload_bits):
-                    b = (b & ~1) | payload_bits[bit_index + 2]  # Embed in Blue LSB
-                pixels[x, y] = (r, g, b)
-                bit_index += 3
-            else:
-                break
-        if bit_index >= len(payload_bits):
+    if len(img_data) * 3 * 8 < len(file_bits) + 32:
+        raise ValueError("The image is too small to embed the file data.")
+
+    # Embed the length of the file data (in bits) at the beginning
+    data_length = len(file_bits)
+    length_bits = []
+    for byte in data_length.to_bytes(4, 'big'):
+        length_bits.extend(byte_to_bits([byte]))
+
+    data_index = 0
+    bits_to_embed = length_bits + file_bits
+
+    for i in range(len(img_data)):
+        if data_index >= len(bits_to_embed):
             break
+        r, g, b = img_data[i]
 
-    # Save the output image as PNG to preserve data
-    image.save(output_path, format="PNG")
-    print(f"Data embedded successfully into {output_path}")
+        if data_index < len(bits_to_embed):
+            r = (r & 0xFE) | bits_to_embed[data_index]
+            data_index += 1
+        if data_index < len(bits_to_embed):
+            g = (g & 0xFE) | bits_to_embed[data_index]
+            data_index += 1
+        if data_index < len(bits_to_embed):
+            b = (b & 0xFE) | bits_to_embed[data_index]
+            data_index += 1
 
-# Call the function
-embed_script_in_image("payload.py", "./uuh.png", "./tainted.png")
+        img_data[i] = (r, g, b)
 
+    new_img = Image.new(img.mode, img.size)
+    new_img.putdata(img_data)
+    new_img.save(output_path)
+    print(f"Python file successfully embedded into the image: {output_path}")
+
+python_file = './payload.py'
+file_data = read_file_as_binary(python_file)
+write_image_with_embedded_data('uuh.png', 'tainted.png', file_data) 

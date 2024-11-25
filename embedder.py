@@ -1,44 +1,69 @@
-from PIL import Image, PngImagePlugin 
-import base64 
-def encode_file_to_base64(file_path): 
-    with open(file_path, 'rb') as file: 
-        encoded_string = base64.b64encode(file.read()).decode('utf-8') 
-        return encoded_string 
-    
-# Encode the Python file 
-python_file = './payload.py' 
-encoded_string = encode_file_to_base64(python_file) 
+from PIL import Image
 
-# Save the encoded string to a file (optional, for reference) 
-with open('encoded_python_file.txt', 'w') as file: 
-    file.write(encoded_string) 
-    print("Python file encoded successfully!") 
-    
-# Convert character to list of bits 
-def ctob(c): 
-    output = [0]*8 # Default 0 to replace with 1 when needed 
+def read_file_as_binary(file_path):
+    with open(file_path, 'rb') as file:
+        return file.read()
+
+def ctob(c):
+    output = [0] * 8  # Default 0 to replace with 1 when needed
     c_val = ord(c)
-    bit_count = 7 # Big Endian
+    bit_count = 7  # Big Endian
     for i in range(len(output)):
-        bit_value = pow(2, bit_count)
+        bit_value = 2 ** bit_count
         if bit_value <= c_val:
             c_val -= bit_value
             output[i] = 1
-            bit_count -= 1 
-            return output
-        
-def embed_data_in_image(input_image_path, output_image_path, data): 
-    # Open the image 
-    image = Image.open(input_image_path)
-    # Create a PngInfo object to store metadata 
-    metadata = PngImagePlugin.PngInfo() 
-    metadata.add_text("python_file", data) 
-    # Save the image with the embedded data 
-    image.save(output_image_path, "PNG", pnginfo=metadata) 
+        bit_count -= 1
+    return output
 
-# Embed the encoded Python file into the image 
-input_image = 'uuh.png' 
-# Image to use 
-output_image = 'tainted.png' # Image with embedded data 
-embed_data_in_image(input_image, output_image, encoded_string) 
-print("Python file embedded successfully!")
+def byte_to_bits(byte_data):
+    bits = []
+    for byte in byte_data:
+        bits.extend([int(bit) for bit in format(byte, '08b')])
+    return bits
+
+def write_image_with_embedded_data(image_path, output_path, file_data):
+    img = Image.open(image_path)
+    img_data = list(img.getdata())
+    print(f"Read image data size: {len(img_data)} pixels")
+
+    file_bits = byte_to_bits(file_data)
+    print(f"Total bits to embed: {len(file_bits)}")
+
+    if len(img_data) * 3 * 8 < len(file_bits) + 32:
+        raise ValueError("The image is too small to embed the file data.")
+
+    # Embed the length of the file data (in bits) at the beginning
+    data_length = len(file_bits)
+    length_bits = []
+    for byte in data_length.to_bytes(4, 'big'):
+        length_bits.extend(byte_to_bits([byte]))
+
+    data_index = 0
+    bits_to_embed = length_bits + file_bits
+
+    for i in range(len(img_data)):
+        if data_index >= len(bits_to_embed):
+            break
+        r, g, b = img_data[i]
+
+        if data_index < len(bits_to_embed):
+            r = (r & 0xFE) | bits_to_embed[data_index]
+            data_index += 1
+        if data_index < len(bits_to_embed):
+            g = (g & 0xFE) | bits_to_embed[data_index]
+            data_index += 1
+        if data_index < len(bits_to_embed):
+            b = (b & 0xFE) | bits_to_embed[data_index]
+            data_index += 1
+
+        img_data[i] = (r, g, b)
+
+    new_img = Image.new(img.mode, img.size)
+    new_img.putdata(img_data)
+    new_img.save(output_path)
+    print(f"Python file successfully embedded into the image: {output_path}")
+
+python_file = './payload.py'
+file_data = read_file_as_binary(python_file)
+write_image_with_embedded_data('uuh.png', 'tainted.png', file_data)

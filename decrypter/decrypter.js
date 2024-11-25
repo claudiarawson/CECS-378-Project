@@ -37,7 +37,8 @@ app.post('/decrypt', (req, res) => {
     const decrypted = crypto.privateDecrypt(
         {
             key: attk_priv,
-            padding: crypto.constants.RSA_PKCS1_PADDING
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha256"
         },
         Buffer.from(to_decrypt, 'base64')
     );

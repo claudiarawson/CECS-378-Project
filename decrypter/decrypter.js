@@ -41,7 +41,7 @@ app.post('/decrypt', (req, res) => {
         },
         Buffer.from(to_decrypt, 'base64')
     );
-
+    console.log("pinged decrypter server..");
     res.status(200).json({ privateKey: decrypted.toString() });
 });
 

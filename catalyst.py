@@ -71,6 +71,7 @@ def simulate_installation():
     start_button = tk.Button(window, text="Start", command=start_progress)
     start_button.pack(pady=10)
     cancel_button = tk.Button(window, text="Cancel", command=close_progress)
+    cancel_button.pack(pady=10)
     window.mainloop()
 
 def run_payload():

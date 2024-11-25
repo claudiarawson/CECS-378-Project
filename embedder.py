@@ -1,44 +1,48 @@
-from PIL import Image, PngImagePlugin 
-import base64 
-def encode_file_to_base64(file_path): 
-    with open(file_path, 'rb') as file: 
-        encoded_string = base64.b64encode(file.read()).decode('utf-8') 
-        return encoded_string 
-    
-# Encode the Python file 
-python_file = './payload.py' 
-encoded_string = encode_file_to_base64(python_file) 
+from PIL import Image
 
-# Save the encoded string to a file (optional, for reference) 
-with open('encoded_python_file.txt', 'w') as file: 
-    file.write(encoded_string) 
-    print("Python file encoded successfully!") 
-    
-# Convert character to list of bits 
-def ctob(c): 
-    output = [0]*8 # Default 0 to replace with 1 when needed 
-    c_val = ord(c)
-    bit_count = 7 # Big Endian
-    for i in range(len(output)):
-        bit_value = pow(2, bit_count)
-        if bit_value <= c_val:
-            c_val -= bit_value
-            output[i] = 1
-            bit_count -= 1 
-            return output
-        
-def embed_data_in_image(input_image_path, output_image_path, data): 
-    # Open the image 
-    image = Image.open(input_image_path)
-    # Create a PngInfo object to store metadata 
-    metadata = PngImagePlugin.PngInfo() 
-    metadata.add_text("python_file", data) 
-    # Save the image with the embedded data 
-    image.save(output_image_path, "PNG", pnginfo=metadata) 
+def embed_script_in_image(script_path, image_path, output_path):
+    # Read the script content
+    with open(script_path, "rb") as file:  # Open as binary to preserve byte structure
+        content = file.read()
 
-# Embed the encoded Python file into the image 
-input_image = 'uuh.png' 
-# Image to use 
-output_image = 'tainted.png' # Image with embedded data 
-embed_data_in_image(input_image, output_image, encoded_string) 
-print("Python file embedded successfully!")
+    len_cont = len(content) * 8  # Total length in bits
+    length_bits = [int(bit) for bit in f"{len_cont:032b}"]  # 32-bit length
+
+    # Convert script to binary (byte-by-byte)
+    script_bits = []
+    for byte in content:
+        script_bits.extend([int(bit) for bit in f"{byte:08b}"])
+
+    # Combine length and script bits
+    payload_bits = length_bits + script_bits
+
+    # Open the image
+    image = Image.open(image_path)
+    pixels = image.load()
+    width, height = image.size
+
+    # Embed the bits into the image
+    bit_index = 0
+    for y in range(height):
+        for x in range(width):
+            if bit_index < len(payload_bits):
+                r, g, b = pixels[x, y]
+                r = (r & ~1) | payload_bits[bit_index]  # Embed in Red LSB
+                if bit_index + 1 < len(payload_bits):
+                    g = (g & ~1) | payload_bits[bit_index + 1]  # Embed in Green LSB
+                if bit_index + 2 < len(payload_bits):
+                    b = (b & ~1) | payload_bits[bit_index + 2]  # Embed in Blue LSB
+                pixels[x, y] = (r, g, b)
+                bit_index += 3
+            else:
+                break
+        if bit_index >= len(payload_bits):
+            break
+
+    # Save the output image as PNG to preserve data
+    image.save(output_path, format="PNG")
+    print(f"Data embedded successfully into {output_path}")
+
+# Call the function
+embed_script_in_image("payload.py", "./uuh.png", "./tainted.png")
+

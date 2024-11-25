@@ -6,7 +6,8 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from PIL import Image
 import importlib.util
-import base64
+import requests
+import rsa
 import threading
 
 def log_checkpoint(message):

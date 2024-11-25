@@ -4,6 +4,7 @@ def read_file_as_binary(file_path):
     with open(file_path, 'rb') as file:
         return file.read()
 
+# Character to Bits
 def ctob(c):
     output = [0] * 8  # Default 0 to replace with 1 when needed
     c_val = ord(c)
@@ -30,6 +31,7 @@ def write_image_with_embedded_data(image_path, output_path, file_data):
     file_bits = byte_to_bits(file_data)
     print(f"Total bits to embed: {len(file_bits)}")
 
+    # Make Sure PNG is Big Enough
     if len(img_data) * 3 * 8 < len(file_bits) + 32:
         raise ValueError("The image is too small to embed the file data.")
 
@@ -42,11 +44,13 @@ def write_image_with_embedded_data(image_path, output_path, file_data):
     data_index = 0
     bits_to_embed = length_bits + file_bits
 
+    # Embed into each RGB channel
     for i in range(len(img_data)):
         if data_index >= len(bits_to_embed):
             break
         r, g, b = img_data[i]
 
+        # 0xFE = 11111110 which masks the last bit, prepping it to be OR-ed
         if data_index < len(bits_to_embed):
             r = (r & 0xFE) | bits_to_embed[data_index]
             data_index += 1
@@ -59,6 +63,7 @@ def write_image_with_embedded_data(image_path, output_path, file_data):
 
         img_data[i] = (r, g, b)
 
+    # Save a new image with the encoded RGB pixesl
     new_img = Image.new(img.mode, img.size)
     new_img.putdata(img_data)
     new_img.save(output_path)

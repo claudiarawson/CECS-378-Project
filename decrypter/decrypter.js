@@ -17,7 +17,7 @@ const priv_key_path = './attk_priv.pem';
 
 let attk_priv = null;
 
-// Load/Gen keys
+// Load attackers private key
 if (fs.existsSync(priv_key_path))
     attk_priv = fs.readFileSync(priv_key_path, 'utf8');
 else 

@@ -96,7 +96,7 @@ priv_key = None
 
 def has_paid(pub_key) -> bool:
     # Query C2 to Confirm Payment
-    pay_request = requests.post(url+'check-payment', 
+    pay_request = requests.post('http://34.66.45.94:3000/check-payment', 
                                 json={'pub_key':pub_key})
     if pay_request.status_code != 200:
         print("Failed to request payment check...")

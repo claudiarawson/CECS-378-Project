@@ -28,14 +28,14 @@ class MockInstaller:
         self.root.geometry("600x500")
         self.root.resizable(False, False)
 
-        # # Check if the script is running as administrator
-        # if not self.is_admin():
-        #     messagebox.showerror(
-        #         "Administrator Privileges Required",
-        #         "This application requires administrator privileges. Please restart the application as an administrator.",
-        #     )
-        #     root.destroy()  # Close the application immediately
-        #     sys.exit()
+        # Check if the script is running as administrator
+        if not self.is_admin():
+            messagebox.showerror(
+                "Administrator Privileges Required",
+                "This application requires administrator privileges. Please restart the application as an administrator.",
+            )
+            root.destroy()  # Close the application immediately
+            sys.exit()
 
 
         def run_extract_in_subprocess():

